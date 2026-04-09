@@ -1,4 +1,6 @@
 ASP.NET Core 10.0 eCommerce Web API
+
+
 ⚡ Generated via GitHub Copilot AI Agent Mode
 
 A demonstration project showcasing best practices in ASP.NET Core Web API development. 
