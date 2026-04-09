@@ -1,0 +1,190 @@
+@baseUrl = http://localhost:5256
+@contentType = application/json
+
+###
+### CATEGORY ENDPOINTS
+###
+
+### Create a new category
+# @name CreateCategory
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "title": "AI Tools",
+  "description": "Artificial Intelligence and Machine Learning tools"
+}
+
+### Get all categories
+# @name GetAllCategories
+GET {{baseUrl}}/api/categories
+
+### Get category by ID
+# @name GetCategoryById
+GET {{baseUrl}}/api/categories/{{CreateCategory.response.body.id}}
+
+### Update category
+# @name UpdateCategory
+PUT {{baseUrl}}/api/categories/{{CreateCategory.response.body.id}}
+Content-Type: {{contentType}}
+
+{
+  "title": "AI Tools - Updated",
+  "description": "Advanced Artificial Intelligence and Machine Learning solutions"
+}
+
+### Delete category
+# @name DeleteCategory
+DELETE {{baseUrl}}/api/categories/{{CreateCategory.response.body.id}}
+
+###
+### PRODUCT ENDPOINTS
+###
+
+### Create a category first (for product tests)
+# @name CreateCategoryForProducts
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "title": "GitHub Copilot Skills",
+  "description": "Skills and tools powered by GitHub Copilot"
+}
+
+### Create a new product
+# @name CreateProduct
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "GitHub Copilot Pro",
+  "description": "Advanced AI-powered code suggestions and completions",
+  "price": 20.00,
+  "categoryId": "{{CreateCategoryForProducts.response.body.id}}"
+}
+
+### Get all products
+# @name GetAllProducts
+GET {{baseUrl}}/api/products
+
+### Get product by ID
+# @name GetProductById
+GET {{baseUrl}}/api/products/{{CreateProduct.response.body.id}}
+
+### Update product
+# @name UpdateProduct
+PUT {{baseUrl}}/api/products/{{CreateProduct.response.body.id}}
+Content-Type: {{contentType}}
+
+{
+  "name": "GitHub Copilot Pro - Premium",
+  "description": "Premium AI-powered code suggestions with enhanced features",
+  "price": 25.00,
+  "categoryId": "{{CreateCategoryForProducts.response.body.id}}"
+}
+
+### Delete product
+# @name DeleteProduct
+DELETE {{baseUrl}}/api/products/{{CreateProduct.response.body.id}}
+
+### Delete category (cleanup)
+# @name DeleteCategoryForProducts
+DELETE {{baseUrl}}/api/categories/{{CreateCategoryForProducts.response.body.id}}
+
+###
+### ADDITIONAL TEST SCENARIOS
+###
+
+### Create multiple categories for bulk testing
+# @name CreateCategory1
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "title": "Development Tools",
+  "description": "Essential development and coding tools"
+}
+
+### Create Category 2
+# @name CreateCategory2
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "title": "Cloud Services",
+  "description": "Cloud computing and infrastructure services"
+}
+
+### Create Category 3
+# @name CreateCategory3
+POST {{baseUrl}}/api/categories
+Content-Type: {{contentType}}
+
+{
+  "title": "Security Solutions",
+  "description": "Security and compliance tools"
+}
+
+### Create product in first category
+# @name CreateProduct1
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Visual Studio Code",
+  "description": "Lightweight and powerful code editor",
+  "price": 0.00,
+  "categoryId": "{{CreateCategory1.response.body.id}}"
+}
+
+### Create product in second category
+# @name CreateProduct2
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Azure Services",
+  "description": "Comprehensive cloud platform",
+  "price": 50.00,
+  "categoryId": "{{CreateCategory2.response.body.id}}"
+}
+
+### Create product in third category
+# @name CreateProduct3
+POST {{baseUrl}}/api/products
+Content-Type: {{contentType}}
+
+{
+  "name": "Azure Security Center",
+  "description": "Unified security management platform",
+  "price": 75.00,
+  "categoryId": "{{CreateCategory3.response.body.id}}"
+}
+
+### Get all categories (verify bulk creation)
+GET {{baseUrl}}/api/categories
+
+### Get all products (verify bulk creation)
+GET {{baseUrl}}/api/products
+
+###
+### ERROR HANDLING TESTS
+###
+
+### Get non-existent category
+GET {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
+
+### Get non-existent product
+GET {{baseUrl}}/api/products/00000000-0000-0000-0000-000000000000
+
+### Update non-existent category
+PUT {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
+Content-Type: {{contentType}}
+
+{
+  "title": "Test",
+  "description": "Test"
+}
+
+### Delete non-existent category
+DELETE {{baseUrl}}/api/categories/00000000-0000-0000-0000-000000000000
