@@ -1,5 +1,7 @@
+using GitHubCopilotAutoCode.Common;
 using GitHubCopilotAutoCode.Data;
 using GitHubCopilotAutoCode.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace GitHubCopilotAutoCode.Endpoints;
@@ -13,7 +15,8 @@ public static class CategoryEndpoints
 
         group.MapGet("/", GetAllCategories)
             .WithName("GetAllCategories")
-            .WithSummary("Get all categories");
+            .WithSummary("Get all categories with pagination and filtering")
+            .Produces<PagedResult<CategoryResponse>>(200);
 
         group.MapGet("/{id}", GetCategoryById)
             .WithName("GetCategoryById")
@@ -32,11 +35,42 @@ public static class CategoryEndpoints
             .WithSummary("Delete a category");
     }
 
-    private static async Task<IResult> GetAllCategories(ApplicationDbContext context)
+    private static async Task<IResult> GetAllCategories(
+        [AsParameters] PaginationOptions options,
+        ApplicationDbContext context)
     {
-        var categories = await context.Categories.ToListAsync();
-        var response = categories.Select(ToCategoryResponse).ToList();
-        return Results.Ok(response);
+        var query = context.Categories.AsQueryable();
+
+        // Apply search filter if provided
+        if (!string.IsNullOrEmpty(options.SearchTerm))
+        {
+            query = query.Where(c =>
+                c.Title.Contains(options.SearchTerm) ||
+                c.Description.Contains(options.SearchTerm));
+        }
+
+        // Apply sorting
+        query = options.SortBy?.ToLower() switch
+        {
+            "title" => options.SortDirection == "desc"
+                ? query.OrderByDescending(c => c.Title)
+                : query.OrderBy(c => c.Title),
+            "createdat" => options.SortDirection == "desc"
+                ? query.OrderByDescending(c => c.CreatedAtUtc)
+                : query.OrderBy(c => c.CreatedAtUtc),
+            _ => query.OrderBy(c => c.CreatedAtUtc)
+        };
+
+        var pagedResult = await query
+            .Select(c => new CategoryResponse(
+                c.Id,
+                c.Title,
+                c.Description,
+                c.CreatedAtUtc,
+                c.UpdatedAtUtc))
+            .ToPagedResultAsync(options.PageNumber, options.PageSize);
+
+        return Results.Ok(pagedResult);
     }
 
     private static async Task<IResult> GetCategoryById(Guid id, ApplicationDbContext context)

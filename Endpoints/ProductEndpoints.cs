@@ -1,5 +1,7 @@
+using GitHubCopilotAutoCode.Common;
 using GitHubCopilotAutoCode.Data;
 using GitHubCopilotAutoCode.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace GitHubCopilotAutoCode.Endpoints;
@@ -13,7 +15,8 @@ public static class ProductEndpoints
 
         group.MapGet("/", GetAllProducts)
             .WithName("GetAllProducts")
-            .WithSummary("Get all products");
+            .WithSummary("Get all products with pagination and filtering")
+            .Produces<PagedResult<ProductWithCategoryResponse>>(200);
 
         group.MapGet("/{id}", GetProductById)
             .WithName("GetProductById")
@@ -32,14 +35,50 @@ public static class ProductEndpoints
             .WithSummary("Delete a product");
     }
 
-    private static async Task<IResult> GetAllProducts(ApplicationDbContext context)
+    private static async Task<IResult> GetAllProducts(
+        [AsParameters] PaginationOptions options,
+        ApplicationDbContext context)
     {
-        var products = await context.Products
-            .Include(p => p.Category)
-            .ToListAsync();
-        
-        var response = products.Select(ToProductWithCategoryResponse).ToList();
-        return Results.Ok(response);
+        var query = context.Products.Include(p => p.Category).AsQueryable();
+
+        // Apply search filter if provided
+        if (!string.IsNullOrEmpty(options.SearchTerm))
+        {
+            query = query.Where(p =>
+                p.Name.Contains(options.SearchTerm) ||
+                p.Description.Contains(options.SearchTerm));
+        }
+
+        // Apply sorting
+        query = options.SortBy?.ToLower() switch
+        {
+            "name" => options.SortDirection == "desc"
+                ? query.OrderByDescending(p => p.Name)
+                : query.OrderBy(p => p.Name),
+            "price" => options.SortDirection == "desc"
+                ? query.OrderByDescending(p => p.Price)
+                : query.OrderBy(p => p.Price),
+            "createdat" => options.SortDirection == "desc"
+                ? query.OrderByDescending(p => p.CreatedAtUtc)
+                : query.OrderBy(p => p.CreatedAtUtc),
+            _ => query.OrderBy(p => p.CreatedAtUtc)
+        };
+
+        var pagedResult = await query
+            .Select(p => new ProductWithCategoryResponse(
+                p.Id,
+                p.Name,
+                p.Description,
+                p.Price,
+                p.CategoryId,
+                p.CreatedAtUtc,
+                p.UpdatedAtUtc,
+                p.Category != null
+                    ? new CategorySummary(p.Category.Id, p.Category.Title)
+                    : null))
+            .ToPagedResultAsync(options.PageNumber, options.PageSize);
+
+        return Results.Ok(pagedResult);
     }
 
     private static async Task<IResult> GetProductById(Guid id, ApplicationDbContext context)
