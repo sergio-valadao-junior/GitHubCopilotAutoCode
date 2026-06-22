@@ -1,32 +1,69 @@
-ASP.NET Core 10.0 eCommerce Web API
+# GitHubCopilotAutoCode
 
+Developer-focused ASP.NET Core 10.0 Minimal Web API sample for managing a small
+product catalog (Categories and Products). Designed for contributors and engineers
+exploring Minimal APIs, EF Core InMemory usage, and clean architecture patterns.
 
-⚡ Generated via GitHub Copilot AI Agent Mode
+## Table of Contents
+- Quickstart
+- Features
+- Architecture & Tech
+- API Endpoints
+- Development Notes
+- Contributing
+- Assets & Design
 
-A demonstration project showcasing best practices in ASP.NET Core Web API development. 
-This application was entirely generated through interactions with GitHub Copilot in 
-Agent mode, implementing a GitHub Copilot Skills eCommerce platform with a complete 
-REST API for managing product categories and inventory.
+## Quickstart
+Build and run locally (requires .NET 10 SDK):
 
-The codebase demonstrates how AI-assisted development can produce well-structured, 
-production-ready code that follows industry best practices and SOLID principles.
+```bash
+dotnet build
+dotnet run --launch-profile https
+```
 
-Key Features:
-• Minimal APIs pattern for clean, performant endpoint definitions
-• Entity Framework Core with InMemory database for testing/development
-• One-to-many relationships with proper entity configuration
-• Fixed circular reference serialization issue in JSON responses
-• RESTful CRUD operations for Categories and Products
-• Response DTOs to optimize API payloads
-• Follows SOLID principles and clean code conventions
+Default dev URLs (from project launch settings):
+- http://localhost:5256
+- https://localhost:7026
 
-Tech Stack:
-• .NET 10.0
-• ASP.NET Core Minimal APIs
-• Entity Framework Core
-• C# 13 sealed classes and primary constructors
+After startup, try a sample request:
 
-The project includes GitHub Copilot instructions and detailed code guidelines 
-for maintaining consistency across the codebase.
+```bash
+curl -sS http://localhost:5256/api/categories
+```
 
-🤖 All code generated through GitHub Copilot AI Agent mode interaction
+## Features
+- Minimal APIs with clear route grouping and DTOs
+- Entity Framework Core InMemory provider for development/testing
+- RESTful CRUD for `Category` and `Product`
+- Service layer (`Services/*`) to separate concerns
+- Configuration and mappings in `Data/` and `Data/Mapping/`
+
+## Architecture & Tech
+- Target framework: .NET 10.0 ([GitHubCopilotAutoCode.csproj](GitHubCopilotAutoCode.csproj))
+- Hosting: ASP.NET Core Minimal APIs entry point ([Program.cs](Program.cs))
+- InMemory EF provider configured in [Data/ApplicationDbContext.cs](Data/ApplicationDbContext.cs)
+- Launch profiles and URLs: [Properties/launchSettings.json](Properties/launchSettings.json)
+
+## API Endpoints
+Core endpoint mappings:
+- [Endpoints/CategoryEndpoints.cs](Endpoints/CategoryEndpoints.cs)
+- [Endpoints/ProductEndpoints.cs](Endpoints/ProductEndpoints.cs)
+
+Common data & services:
+- [Data/ApplicationDbContext.cs](Data/ApplicationDbContext.cs)
+- [Data/Mapping/CategoryConfiguration.cs](Data/Mapping/CategoryConfiguration.cs)
+- [Data/Mapping/ProductConfiguration.cs](Data/Mapping/ProductConfiguration.cs)
+- [Services/CategoryService.cs](Services/CategoryService.cs)
+- [Services/ProductService.cs](Services/ProductService.cs)
+
+For implementation details and DTOs, explore the `Models/` and `Endpoints/` folders.
+
+## Development Notes
+- The InMemory database is ephemeral — data is lost when the app restarts.
+- Use `dotnet build` and `dotnet run --launch-profile https` to run locally.
+- If you change ports, update `Properties/launchSettings.json` and the Quickstart above.
+
+## Contributing
+- Open issues and PRs against this repository. 
+- Follow existing code style and the project's `.github` guidance (see [.github/copilot-instructions.md](.github/copilot-instructions.md)).
+
