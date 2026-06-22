@@ -1,8 +1,8 @@
 using GitHubCopilotAutoCode.Common;
-using GitHubCopilotAutoCode.Data;
+using GitHubCopilotAutoCode.Endpoints;
 using GitHubCopilotAutoCode.Models;
+using GitHubCopilotAutoCode.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 
 namespace GitHubCopilotAutoCode.Endpoints;
 
@@ -37,116 +37,35 @@ public static class ProductEndpoints
 
     private static async Task<IResult> GetAllProducts(
         [AsParameters] PaginationOptions options,
-        ApplicationDbContext context)
+        IProductService productService)
     {
-        var query = context.Products.Include(p => p.Category).AsQueryable();
-
-        // Apply search filter if provided
-        if (!string.IsNullOrEmpty(options.SearchTerm))
-        {
-            query = query.Where(p =>
-                p.Name.Contains(options.SearchTerm) ||
-                p.Description.Contains(options.SearchTerm));
-        }
-
-        // Apply sorting
-        query = options.SortBy?.ToLower() switch
-        {
-            "name" => options.SortDirection == "desc"
-                ? query.OrderByDescending(p => p.Name)
-                : query.OrderBy(p => p.Name),
-            "price" => options.SortDirection == "desc"
-                ? query.OrderByDescending(p => p.Price)
-                : query.OrderBy(p => p.Price),
-            "createdat" => options.SortDirection == "desc"
-                ? query.OrderByDescending(p => p.CreatedAtUtc)
-                : query.OrderBy(p => p.CreatedAtUtc),
-            _ => query.OrderBy(p => p.CreatedAtUtc)
-        };
-
-        var pagedResult = await query
-            .Select(p => new ProductWithCategoryResponse(
-                p.Id,
-                p.Name,
-                p.Description,
-                p.Price,
-                p.CategoryId,
-                p.CreatedAtUtc,
-                p.UpdatedAtUtc,
-                p.Category != null
-                    ? new CategorySummary(p.Category.Id, p.Category.Title)
-                    : null))
-            .ToPagedResultAsync(options.PageNumber, options.PageSize);
-
+        var pagedResult = await productService.GetAllAsync(options);
         return Results.Ok(pagedResult);
     }
 
-    private static async Task<IResult> GetProductById(Guid id, ApplicationDbContext context)
+    private static async Task<IResult> GetProductById(Guid id, IProductService productService)
     {
-        var product = await context.Products
-            .Include(p => p.Category)
-            .FirstOrDefaultAsync(p => p.Id == id);
+        var product = await productService.GetByIdAsync(id);
 
-        if (product is null)
-            return Results.NotFound();
-
-        var response = ToProductWithCategoryResponse(product);
-        return Results.Ok(response);
+        return product is null ? Results.NotFound() : Results.Ok(product);
     }
 
-    private static async Task<IResult> CreateProduct(CreateProductRequest request, ApplicationDbContext context)
+    private static async Task<IResult> CreateProduct(CreateProductRequest request, IProductService productService)
     {
-        var product = new Product
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            Price = request.Price,
-            CategoryId = request.CategoryId,
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
-        };
-
-        context.Products.Add(product);
-        await context.SaveChangesAsync();
-
-        // Load the category for the response
-        await context.Entry(product).Reference(p => p.Category).LoadAsync();
-        var response = ToProductWithCategoryResponse(product);
-        return Results.Created($"/api/products/{product.Id}", response);
+        var response = await productService.CreateAsync(request);
+        return Results.Created($"/api/products/{response.Id}", response);
     }
 
-    private static async Task<IResult> UpdateProduct(Guid id, UpdateProductRequest request, ApplicationDbContext context)
+    private static async Task<IResult> UpdateProduct(Guid id, UpdateProductRequest request, IProductService productService)
     {
-        var product = await context.Products
-            .Include(p => p.Category)
-            .FirstOrDefaultAsync(p => p.Id == id);
-        
-        if (product is null)
-            return Results.NotFound();
-
-        product.Name = request.Name;
-        product.Description = request.Description;
-        product.Price = request.Price;
-        product.CategoryId = request.CategoryId;
-        product.UpdatedAtUtc = DateTime.UtcNow;
-
-        await context.SaveChangesAsync();
-
-        var response = ToProductWithCategoryResponse(product);
-        return Results.Ok(response);
+        var response = await productService.UpdateAsync(id, request);
+        return response is null ? Results.NotFound() : Results.Ok(response);
     }
 
-    private static async Task<IResult> DeleteProduct(Guid id, ApplicationDbContext context)
+    private static async Task<IResult> DeleteProduct(Guid id, IProductService productService)
     {
-        var product = await context.Products.FindAsync(id);
-        if (product is null)
-            return Results.NotFound();
-
-        context.Products.Remove(product);
-        await context.SaveChangesAsync();
-
-        return Results.NoContent();
+        var deleted = await productService.DeleteAsync(id);
+        return deleted ? Results.NoContent() : Results.NotFound();
     }
 
     private static ProductWithCategoryResponse ToProductWithCategoryResponse(Product product)
