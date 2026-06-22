@@ -1,8 +1,8 @@
 using GitHubCopilotAutoCode.Common;
-using GitHubCopilotAutoCode.Data;
+using GitHubCopilotAutoCode.Endpoints;
 using GitHubCopilotAutoCode.Models;
+using GitHubCopilotAutoCode.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 
 namespace GitHubCopilotAutoCode.Endpoints;
 
@@ -37,99 +37,34 @@ public static class CategoryEndpoints
 
     private static async Task<IResult> GetAllCategories(
         [AsParameters] PaginationOptions options,
-        ApplicationDbContext context)
+        ICategoryService categoryService)
     {
-        var query = context.Categories.AsQueryable();
-
-        // Apply search filter if provided
-        if (!string.IsNullOrEmpty(options.SearchTerm))
-        {
-            query = query.Where(c =>
-                c.Title.Contains(options.SearchTerm) ||
-                c.Description.Contains(options.SearchTerm));
-        }
-
-        // Apply sorting
-        query = options.SortBy?.ToLower() switch
-        {
-            "title" => options.SortDirection == "desc"
-                ? query.OrderByDescending(c => c.Title)
-                : query.OrderBy(c => c.Title),
-            "createdat" => options.SortDirection == "desc"
-                ? query.OrderByDescending(c => c.CreatedAtUtc)
-                : query.OrderBy(c => c.CreatedAtUtc),
-            _ => query.OrderBy(c => c.CreatedAtUtc)
-        };
-
-        var pagedResult = await query
-            .Select(c => new CategoryResponse(
-                c.Id,
-                c.Title,
-                c.Description,
-                c.CreatedAtUtc,
-                c.UpdatedAtUtc))
-            .ToPagedResultAsync(options.PageNumber, options.PageSize);
-
+        var pagedResult = await categoryService.GetAllAsync(options);
         return Results.Ok(pagedResult);
     }
 
-    private static async Task<IResult> GetCategoryById(Guid id, ApplicationDbContext context)
+    private static async Task<IResult> GetCategoryById(Guid id, ICategoryService categoryService)
     {
-        var category = await context.Categories
-            .Include(c => c.Products)
-            .FirstOrDefaultAsync(c => c.Id == id);
-        
-        if (category is null)
-            return Results.NotFound();
-
-        var response = ToCategoryWithProductsResponse(category);
-        return Results.Ok(response);
+        var category = await categoryService.GetByIdAsync(id);
+        return category is null ? Results.NotFound() : Results.Ok(category);
     }
 
-    private static async Task<IResult> CreateCategory(CreateCategoryRequest request, ApplicationDbContext context)
+    private static async Task<IResult> CreateCategory(CreateCategoryRequest request, ICategoryService categoryService)
     {
-        var category = new Category
-        {
-            Id = Guid.NewGuid(),
-            Title = request.Title,
-            Description = request.Description,
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
-        };
-
-        context.Categories.Add(category);
-        await context.SaveChangesAsync();
-
-        var response = ToCategoryResponse(category);
-        return Results.Created($"/api/categories/{category.Id}", response);
+        var response = await categoryService.CreateAsync(request);
+        return Results.Created($"/api/categories/{response.Id}", response);
     }
 
-    private static async Task<IResult> UpdateCategory(Guid id, UpdateCategoryRequest request, ApplicationDbContext context)
+    private static async Task<IResult> UpdateCategory(Guid id, UpdateCategoryRequest request, ICategoryService categoryService)
     {
-        var category = await context.Categories.FindAsync(id);
-        if (category is null)
-            return Results.NotFound();
-
-        category.Title = request.Title;
-        category.Description = request.Description;
-        category.UpdatedAtUtc = DateTime.UtcNow;
-
-        await context.SaveChangesAsync();
-
-        var response = ToCategoryResponse(category);
-        return Results.Ok(response);
+        var response = await categoryService.UpdateAsync(id, request);
+        return response is null ? Results.NotFound() : Results.Ok(response);
     }
 
-    private static async Task<IResult> DeleteCategory(Guid id, ApplicationDbContext context)
+    private static async Task<IResult> DeleteCategory(Guid id, ICategoryService categoryService)
     {
-        var category = await context.Categories.FindAsync(id);
-        if (category is null)
-            return Results.NotFound();
-
-        context.Categories.Remove(category);
-        await context.SaveChangesAsync();
-
-        return Results.NoContent();
+        var deleted = await categoryService.DeleteAsync(id);
+        return deleted ? Results.NoContent() : Results.NotFound();
     }
 
     private static CategoryResponse ToCategoryResponse(Category category)
